@@ -80,11 +80,8 @@ namespace homefix
                     if (rows > 0)
                     {
                         MessageBox.Show("Pedido criado com sucesso!");
-                        // Mudar para a aba de pedidos pendentes
-                        tabControl1.SelectedTab = tabPage2;
-
-                        // Recarregar os pedidos pendentes
-                        CarregarServicosPendentes();
+                        tabControl1.SelectedTab = tabPage2; // Vai para pendentes
+                        CarregarPedidosPorEstado("Pendente");
                     }
                     else
                     {
@@ -100,14 +97,21 @@ namespace homefix
 
         private void tabControl1_SelectedIndexChanged(object sender, EventArgs e)
         {
-            // Supondo que a aba dos pedidos pendentes é a segunda aba (index 1)
             if (tabControl1.SelectedTab == tabPage2)
             {
-                CarregarServicosPendentes();
+                CarregarPedidosPorEstado("Pendente");
+            }
+            else if (tabControl1.SelectedTab == tabPage3)
+            {
+                CarregarPedidosPorEstado("Progresso");
+            }
+            else if (tabControl1.SelectedTab == tabPage4)  // Exemplo de aba 4 para pedidos concluídos
+            {
+                CarregarPedidosPorEstado("Concluído");
             }
         }
 
-        private void CarregarServicosPendentes()
+        private void CarregarPedidosPorEstado(string estado)
         {
             try
             {
@@ -119,29 +123,31 @@ namespace homefix
 
                 string sql = @"SELECT ID_pedido, Localizacao, data_pedido, Descricao, Estado
                                FROM PedidoServico
-                               WHERE Cliente = @clienteID AND Estado = 'Pendente'";
+                               WHERE Cliente = @clienteID AND Estado = @estado";
 
                 using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
                 {
                     cmd.Parameters.AddWithValue("@clienteID", clienteID);
+                    cmd.Parameters.AddWithValue("@estado", estado);
 
                     using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
                     {
                         DataTable dt = new DataTable();
                         adapter.Fill(dt);
-                        dataGridView1.DataSource = dt;
+                        if (estado == "Pendente") { dataGridView1.DataSource = dt; }
+                        else if (estado == "Progresso") { dataGridView2.DataSource = dt; }
+                        else { dataGridView3.DataSource = dt; }
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erro ao carregar pedidos pendentes: " + ex.Message);
+                MessageBox.Show("Erro ao carregar pedidos: " + ex.Message);
             }
         }
 
         private void tabPage2_Click(object sender, EventArgs e)
         {
-            CarregarServicosPendentes();
         }
 
         private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
@@ -158,5 +164,11 @@ namespace homefix
         {
 
         }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            this.Close(); // Fecha o form atual (importante para libertar memória)
+        }
     }
 }
+

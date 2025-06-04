@@ -83,12 +83,14 @@ namespace homefix
                 if (isProfissional)
                 {
                     ProfissionlForm profForm = new ProfissionlForm(email);
-                    profForm.Show();
+                    profForm.ShowDialog();
+                    this.Show();  // Quando voltar, mostra o login de novo
                 }
                 else
                 {
                     PedidoForm pedidoForm = new PedidoForm(email);
-                    pedidoForm.Show();
+                    pedidoForm.ShowDialog();
+                    this.Show();  // Quando voltar, mostra o login de novo
                 }
             }
             catch (Exception ex)

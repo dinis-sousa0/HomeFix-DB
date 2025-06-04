@@ -43,6 +43,45 @@ namespace homefix
             }
         }
 
+        private void CarregarPedidosEmProgresso()
+        {
+            try
+            {
+                if (!DatabaseHelper.VerifyConnection())
+                {
+                    MessageBox.Show("Erro na conexão com a base de dados.");
+                    return;
+                }
+
+                string sql = @"
+            SELECT ps.ID_pedido, ps.Localizacao, ps.data_pedido, ps.Descricao, ps.Estado,
+                   s.Num_servico, s.Sumario, s.Custo
+            FROM PedidoServico ps
+            JOIN Servico s ON ps.Servico = s.Num_servico
+            WHERE ps.Estado = 'Progresso' AND s.Profissional = @profissionalID";
+
+                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                {
+                    cmd.Parameters.AddWithValue("@profissionalID", profissionalID);
+
+                    using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
+                    {
+                        DataTable dt = new DataTable();
+                        adapter.Fill(dt);
+                        dataGridView1.DataSource = dt;
+
+                        // Permitir edição direta de Sumario e Custo
+                        dataGridView1.Columns["Sumario"].ReadOnly = false;
+                        dataGridView1.Columns["Custo"].ReadOnly = false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao carregar pedidos em progresso: " + ex.Message);
+            }
+        }
+
 
 
         private void label2_Click(object sender, EventArgs e)
@@ -58,10 +97,13 @@ namespace homefix
 
         private void tabControl1_SelectedIndexChanged(object sender, EventArgs e)
         {
-            // Supondo que a aba dos pedidos pendentes é a segunda aba (index 1)
             if (tabControl1.SelectedTab == tabPage2)
             {
-                //CarregarServicosPendentes();
+                CarregarPedidosEmProgresso(); // carrega os pedidos em progresso do profissional
+            }
+            else if (tabControl1.SelectedTab == tabPage4)
+            {
+                CarregarEmpresas();
             }
         }
 
@@ -195,5 +237,220 @@ namespace homefix
                 MessageBox.Show("Erro: " + ex.Message);
             }
         }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+
+            this.Close(); // Fecha o form atual (importante para libertar memória)
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            if (dataGridView1.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Por favor, selecione um pedido para atualizar.");
+                return;
+            }
+
+            try
+            {
+                if (!DatabaseHelper.VerifyConnection())
+                {
+                    MessageBox.Show("Erro na conexão com a base de dados.");
+                    return;
+                }
+
+                using (SqlConnection cn = DatabaseHelper.GetConnection())
+                {
+                    // Pega a primeira linha selecionada (podes adaptar para múltiplas se quiseres)
+                    DataGridViewRow row = dataGridView1.SelectedRows[0];
+
+                    int servicoID = Convert.ToInt32(row.Cells["Num_servico"].Value);
+                    string sumario = row.Cells["Sumario"].Value?.ToString();
+
+                    object custoParam;
+                    string custoStr = row.Cells["Custo"].Value?.ToString();
+
+                    if (string.IsNullOrWhiteSpace(custoStr))
+                    {
+                        custoParam = DBNull.Value; // NULL no banco
+                    }
+                    else if (decimal.TryParse(custoStr, out decimal custo))
+                    {
+                        custoParam = custo;
+                    }
+                    else
+                    {
+                        MessageBox.Show("Custo inválido na linha " + row.Index);
+                        return;
+                    }
+
+                    string sql = @"UPDATE Servico SET Sumario = @Sumario, Custo = @Custo WHERE Num_servico = @ServicoID";
+
+                    using (SqlCommand cmd = new SqlCommand(sql, cn))
+                    {
+                        cmd.Parameters.AddWithValue("@Sumario", (object)sumario ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@Custo", custoParam);
+                        cmd.Parameters.AddWithValue("@ServicoID", servicoID);
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    MessageBox.Show("Alteração salva com sucesso.");
+                    CarregarPedidosEmProgresso(); // Atualiza a grid para mostrar o valor correto
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao atualizar serviço: " + ex.Message);
+            }
+        }
+
+        private void CarregarEmpresas()
+        {
+            try
+            {
+                if (!DatabaseHelper.VerifyConnection())
+                {
+                    MessageBox.Show("Erro na conexão com a base de dados.");
+                    return;
+                }
+
+                string sql = "SELECT NIPC, Nome_empresa, Endereço, Telefone, rating_empregados FROM Empresa";
+
+                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                {
+                    DataTable dt = new DataTable();
+                    using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
+                    {
+                        adapter.Fill(dt);
+                    }
+                    dataGridView3.DataSource = dt;
+
+                    comboBox1.DisplayMember = "Nome_empresa";
+                    comboBox1.ValueMember = "NIPC";
+                    comboBox1.DataSource = dt;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao carregar empresas: " + ex.Message);
+            }
+        }
+
+        private void button7_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (!DatabaseHelper.VerifyConnection())
+                {
+                    MessageBox.Show("Erro na conexão com a base de dados.");
+                    return;
+                }
+
+                int nipc;
+                if (!int.TryParse(textBox5.Text.Trim(), out nipc))
+                {
+                    MessageBox.Show("NIPC inválido.");
+                    return;
+                }
+
+                string nome = textBox4.Text.Trim();
+                string endereco = textBox2.Text.Trim();
+                string telefone = textBox6.Text.Trim();
+
+                if (string.IsNullOrEmpty(nome) || string.IsNullOrEmpty(telefone))
+                {
+                    MessageBox.Show("Nome e Telefone são obrigatórios.");
+                    return;
+                }
+
+
+                string sql = @"INSERT INTO Empresa (NIPC, Nome_empresa, Endereço, Telefone) 
+                       VALUES (@NIPC, @Nome, @Endereco, @Telefone)";
+
+                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                {
+                    cmd.Parameters.AddWithValue("@NIPC", nipc);
+                    cmd.Parameters.AddWithValue("@Nome", nome);
+                    cmd.Parameters.AddWithValue("@Endereco", (object)endereco ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Telefone", telefone);
+
+                    cmd.ExecuteNonQuery();
+                }
+
+                MessageBox.Show("Empresa registada com sucesso!");
+                CarregarEmpresas();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao registar empresa: " + ex.Message);
+            }
+        }
+
+        private void button6_Click(object sender, EventArgs e)
+        {
+            if (comboBox1.SelectedValue == null)
+            {
+                MessageBox.Show("Por favor, selecione uma empresa.");
+                return;
+            }
+
+            int nipc = (int)comboBox1.SelectedValue;
+
+            try
+            {
+                if (!DatabaseHelper.VerifyConnection())
+                {
+                    MessageBox.Show("Erro na conexão com a base de dados.");
+                    return;
+                }
+
+                string sql = @"UPDATE Profissional SET Empresa = @NIPC WHERE ID = @ProfissionalID";
+
+                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                {
+                    cmd.Parameters.AddWithValue("@NIPC", nipc);
+                    cmd.Parameters.AddWithValue("@ProfissionalID", profissionalID);
+                    int rows = cmd.ExecuteNonQuery();
+                    if (rows > 0)
+                        MessageBox.Show("Associado à empresa com sucesso!");
+                    else
+                        MessageBox.Show("Profissional não encontrado ou erro na associação.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao associar empresa: " + ex.Message);
+            }
+        }
+
+        private void button8_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (!DatabaseHelper.VerifyConnection())
+                {
+                    MessageBox.Show("Erro na conexão com a base de dados.");
+                    return;
+                }
+
+                string sql = @"UPDATE Profissional SET Empresa = NULL WHERE ID = @ProfissionalID";
+
+                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                {
+                    cmd.Parameters.AddWithValue("@ProfissionalID", profissionalID);
+                    int rows = cmd.ExecuteNonQuery();
+                    if (rows > 0)
+                        MessageBox.Show("Profissional agora é independente.");
+                    else
+                        MessageBox.Show("Erro ao atualizar status do profissional.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao atualizar profissional: " + ex.Message);
+            }
+        }
+
     }
 }

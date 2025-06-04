@@ -1,33 +1,35 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Data.SqlClient;
 using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Data.SqlClient;
 
 namespace homefix.Helpers
 {
     public static class DatabaseHelper
     {
-        private static SqlConnection cn;
+        private const string CONNECTION_STRING = "data source=ZEZOCA;integrated security=true;initial catalog=homefix";
 
+        // Cria uma nova conexão sempre que chamada
         public static SqlConnection GetConnection()
         {
-            if (cn == null)
-                cn = new SqlConnection("data source=ZEZOCA;integrated security=true;initial catalog=homefix");
+            var cn = new SqlConnection(CONNECTION_STRING);
+            cn.Open();
             return cn;
         }
 
+        // Apenas verifica se a conexão pode ser aberta com sucesso
         public static bool VerifyConnection()
         {
-            if (cn == null)
-                cn = GetConnection();
-
-            if (cn.State != ConnectionState.Open)
-                cn.Open();
-
-            return cn.State == ConnectionState.Open;
+            try
+            {
+                using (var cn = GetConnection())
+                {
+                    return cn.State == ConnectionState.Open;
+                }
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

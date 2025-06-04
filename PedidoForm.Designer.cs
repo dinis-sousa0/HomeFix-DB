@@ -39,10 +39,18 @@
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.tabPage3 = new System.Windows.Forms.TabPage();
             this.textBox3 = new System.Windows.Forms.TextBox();
+            this.button3 = new System.Windows.Forms.Button();
+            this.dataGridView2 = new System.Windows.Forms.DataGridView();
+            this.tabPage4 = new System.Windows.Forms.TabPage();
+            this.dataGridView3 = new System.Windows.Forms.DataGridView();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             this.tabPage2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
+            this.tabPage3.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView2)).BeginInit();
+            this.tabPage4.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView3)).BeginInit();
             this.SuspendLayout();
             // 
             // textBox1
@@ -93,11 +101,13 @@
             this.tabControl1.Controls.Add(this.tabPage1);
             this.tabControl1.Controls.Add(this.tabPage2);
             this.tabControl1.Controls.Add(this.tabPage3);
+            this.tabControl1.Controls.Add(this.tabPage4);
             this.tabControl1.Location = new System.Drawing.Point(0, 35);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
             this.tabControl1.Size = new System.Drawing.Size(1465, 560);
             this.tabControl1.TabIndex = 5;
+            this.tabControl1.SelectedIndexChanged += new System.EventHandler(this.tabControl1_SelectedIndexChanged);
             // 
             // tabPage1
             // 
@@ -140,11 +150,12 @@
             // 
             // tabPage3
             // 
+            this.tabPage3.Controls.Add(this.dataGridView2);
             this.tabPage3.Location = new System.Drawing.Point(4, 25);
             this.tabPage3.Name = "tabPage3";
             this.tabPage3.Size = new System.Drawing.Size(1457, 531);
             this.tabPage3.TabIndex = 2;
-            this.tabPage3.Text = "tabPage3";
+            this.tabPage3.Text = "Pedidos a decorrer";
             this.tabPage3.UseVisualStyleBackColor = true;
             this.tabPage3.Click += new System.EventHandler(this.tabPage3_Click);
             // 
@@ -156,11 +167,52 @@
             this.textBox3.Size = new System.Drawing.Size(100, 22);
             this.textBox3.TabIndex = 6;
             // 
+            // button3
+            // 
+            this.button3.Location = new System.Drawing.Point(1289, 12);
+            this.button3.Name = "button3";
+            this.button3.Size = new System.Drawing.Size(163, 42);
+            this.button3.TabIndex = 8;
+            this.button3.Text = "Terminar Sessao";
+            this.button3.UseVisualStyleBackColor = true;
+            this.button3.Click += new System.EventHandler(this.button3_Click);
+            // 
+            // dataGridView2
+            // 
+            this.dataGridView2.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dataGridView2.Location = new System.Drawing.Point(8, 6);
+            this.dataGridView2.Name = "dataGridView2";
+            this.dataGridView2.RowHeadersWidth = 51;
+            this.dataGridView2.RowTemplate.Height = 24;
+            this.dataGridView2.Size = new System.Drawing.Size(920, 519);
+            this.dataGridView2.TabIndex = 1;
+            // 
+            // tabPage4
+            // 
+            this.tabPage4.Controls.Add(this.dataGridView3);
+            this.tabPage4.Location = new System.Drawing.Point(4, 25);
+            this.tabPage4.Name = "tabPage4";
+            this.tabPage4.Size = new System.Drawing.Size(1457, 531);
+            this.tabPage4.TabIndex = 3;
+            this.tabPage4.Text = "Pedidos Concluidos";
+            this.tabPage4.UseVisualStyleBackColor = true;
+            // 
+            // dataGridView3
+            // 
+            this.dataGridView3.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dataGridView3.Location = new System.Drawing.Point(8, 3);
+            this.dataGridView3.Name = "dataGridView3";
+            this.dataGridView3.RowHeadersWidth = 51;
+            this.dataGridView3.RowTemplate.Height = 24;
+            this.dataGridView3.Size = new System.Drawing.Size(822, 453);
+            this.dataGridView3.TabIndex = 0;
+            // 
             // PedidoForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1464, 606);
+            this.Controls.Add(this.button3);
             this.Controls.Add(this.textBox3);
             this.Controls.Add(this.tabControl1);
             this.Name = "PedidoForm";
@@ -170,6 +222,10 @@
             this.tabPage1.PerformLayout();
             this.tabPage2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
+            this.tabPage3.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView2)).EndInit();
+            this.tabPage4.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView3)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -188,5 +244,9 @@
         private System.Windows.Forms.TabPage tabPage3;
         private System.Windows.Forms.DataGridView dataGridView1;
         private System.Windows.Forms.TextBox textBox3;
+        private System.Windows.Forms.Button button3;
+        private System.Windows.Forms.DataGridView dataGridView2;
+        private System.Windows.Forms.TabPage tabPage4;
+        private System.Windows.Forms.DataGridView dataGridView3;
     }
 }
