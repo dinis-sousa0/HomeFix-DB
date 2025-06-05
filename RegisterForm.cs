@@ -19,13 +19,14 @@ namespace homefix
             InitializeComponent();
             label7.Visible = false;
             textBox7.Visible = false;
+            radioButton1.Checked = true;
         }
 
         private void radioButton1_CheckedChanged(object sender, EventArgs e)
         {
             if (radioButton1.Checked)
             {
-                panel1.Visible = true;
+                panel1.Visible = false;
                 panel2.Visible = false;
                 label7.Visible = false;
                 textBox7.Visible = false;
@@ -36,8 +37,8 @@ namespace homefix
         {
             if (radioButton2.Checked)
             {
-                panel1.Visible = false;
-                panel2.Visible = true;
+                panel1.Visible = true;
+                panel2.Visible = false;
                 label7.Visible = true;
                 textBox7.Visible = true;
             }

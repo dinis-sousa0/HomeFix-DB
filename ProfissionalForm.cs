@@ -22,6 +22,9 @@ namespace homefix
             emailUtilizador = email;
             profissionalID = ObterProfissionalIDPorEmail(emailUtilizador);
             textBox3.Text = profissionalID.ToString();
+            comboBox2.Items.AddRange(new string[] { "Todos", "Pagos", "Não pagos" });
+            comboBox2.SelectedIndex = 0; // Seleciona "Todos" por padrão
+            comboBox2.SelectedIndexChanged += comboBox2_SelectedIndexChanged;
 
             // Opcional: carregar dados iniciais em outras abas se desejar
         }
@@ -100,6 +103,11 @@ namespace homefix
             if (tabControl1.SelectedTab == tabPage2)
             {
                 CarregarPedidosEmProgresso(); // carrega os pedidos em progresso do profissional
+            }
+            else if (tabControl1.SelectedTab == tabPage3)
+            {
+                // Carrega pedidos concluídos com filtro padrão (Todos)
+                CarregarPedidosConcluidos(comboBox2.SelectedItem?.ToString() ?? "Todos");
             }
             else if (tabControl1.SelectedTab == tabPage4)
             {
@@ -338,6 +346,56 @@ namespace homefix
             }
         }
 
+        private void CarregarPedidosConcluidos(string filtro = "Todos")
+        {
+            try
+            {
+                if (!DatabaseHelper.VerifyConnection())
+                {
+                    MessageBox.Show("Erro na conexão com a base de dados.");
+                    return;
+                }
+
+                // SQL base que traz pedidos concluídos
+                string sql = @"
+            SELECT ps.ID_pedido, ps.Localizacao, ps.data_pedido, ps.Descricao, ps.Estado,
+                   s.Num_servico, s.Sumario, s.Custo,
+                   CASE WHEN p.ID_transacao IS NOT NULL THEN 'Pago' ELSE 'Não pago' END AS StatusPagamento
+            FROM PedidoServico ps
+            JOIN Servico s ON ps.Servico = s.Num_servico
+            LEFT JOIN Pagamento p ON s.Num_servico = p.Servico
+            WHERE ps.Estado = 'Concluido'";
+
+                // Filtra dependendo da escolha
+                if (filtro == "Pagos")
+                {
+                    sql += " AND p.ID_transacao IS NOT NULL";
+                }
+                else if (filtro == "Não pagos")
+                {
+                    sql += " AND p.ID_transacao IS NULL";
+                }
+                // se for "Todos" não adiciona filtro extra
+
+                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                {
+                    using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
+                    {
+                        DataTable dt = new DataTable();
+                        adapter.Fill(dt);
+                        dataGridView4.DataSource = dt;
+
+                        // Opcional: ajustar colunas para exibir bem
+                        dataGridView4.Columns["StatusPagamento"].HeaderText = "Status do Pagamento";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao carregar pedidos concluídos: " + ex.Message);
+            }
+        }
+
         private void button7_Click(object sender, EventArgs e)
         {
             try
@@ -509,6 +567,12 @@ namespace homefix
         private void dataGridView4_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
 
+        }
+
+        private void comboBox2_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            string filtroSelecionado = comboBox2.SelectedItem.ToString();
+            CarregarPedidosConcluidos(filtroSelecionado);
         }
     }
 }

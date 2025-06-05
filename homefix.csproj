@@ -113,5 +113,11 @@
   <ItemGroup>
     <None Include="Resources\HomeFix_logo.png" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\secure-payments.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\mbway-109591.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

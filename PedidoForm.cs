@@ -6,6 +6,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -108,7 +109,7 @@ namespace homefix
             }
             else if (tabControl1.SelectedTab == tabPage4)  // Exemplo de aba 4 para pedidos concluídos
             {
-                CarregarPedidosPorEstado("Concluido");
+                CarregarPedidosConcluidos(); // Novo método específico
             }
         }
 
@@ -144,6 +145,68 @@ namespace homefix
             catch (Exception ex)
             {
                 MessageBox.Show("Erro ao carregar pedidos: " + ex.Message);
+            }
+        }
+
+        private void CarregarPedidosConcluidos()
+        {
+            try
+            {
+                if (!DatabaseHelper.VerifyConnection())
+                {
+                    MessageBox.Show("Erro na conexão com a base de dados.");
+                    return;
+                }
+
+                // 1. Pedidos concluídos sem pagamento (para "Por Pagar")
+                string sqlPorPagar = @"
+            SELECT P.ID_pedido, P.Localizacao, P.data_pedido, P.Descricao, P.Estado, P.Servico
+            FROM PedidoServico P
+            LEFT JOIN Pagamento Pg ON P.Servico = Pg.Servico AND Pg.Cliente = @clienteID
+            WHERE P.Cliente = @clienteID AND P.Estado = 'Concluido' AND Pg.ID_transacao IS NULL";
+
+                using (SqlCommand cmd1 = new SqlCommand(sqlPorPagar, DatabaseHelper.GetConnection()))
+                {
+                    cmd1.Parameters.AddWithValue("@clienteID", clienteID);
+                    using (SqlDataAdapter adapter = new SqlDataAdapter(cmd1))
+                    {
+                        DataTable dt = new DataTable();
+                        adapter.Fill(dt);
+                        dataGridView3.DataSource = dt;
+                    }
+                }
+
+                // 2. Todos pedidos concluídos (para "Todos")
+                string sqlTodos = @"
+            SELECT 
+                P.ID_pedido, 
+                P.Localizacao, 
+                P.data_pedido, 
+                P.Descricao, 
+                P.Estado, 
+                P.Servico
+            FROM PedidoServico P
+            JOIN Servico S ON P.Servico = S.Num_servico
+            JOIN Pagamento PAG ON PAG.Servico = S.Num_servico AND PAG.Cliente = P.Cliente
+            WHERE 
+                P.Cliente = @clienteID 
+                AND P.Estado = 'Concluido'
+                AND PAG.ID_transacao IS NOT NULL";
+
+                using (SqlCommand cmd2 = new SqlCommand(sqlTodos, DatabaseHelper.GetConnection()))
+                {
+                    cmd2.Parameters.AddWithValue("@clienteID", clienteID);
+                    using (SqlDataAdapter adapter = new SqlDataAdapter(cmd2))
+                    {
+                        DataTable dt = new DataTable();
+                        adapter.Fill(dt);
+                        dataGridView4.DataSource = dt;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao carregar pedidos concluídos: " + ex.Message);
             }
         }
 
@@ -334,6 +397,9 @@ namespace homefix
                     {
                         MessageBox.Show("Pagamento registado com sucesso!");
                         panel2.Visible = false;
+
+                        // Atualiza a lista de pedidos concluídos para refletir o pagamento
+                        CarregarPedidosConcluidos();
                     }
                     else
                     {
@@ -347,6 +413,118 @@ namespace homefix
             }
         }
 
+        private void label7_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void dataGridView2_SelectionChanged(object sender, EventArgs e)
+        {
+            if (dataGridView2.SelectedRows.Count == 0)
+            {
+                // Ocultar painel se não houver seleção
+                panel3.Visible = false;
+                return;
+            }
+
+            try
+            {
+                int servicoID = Convert.ToInt32(dataGridView2.SelectedRows[0].Cells["Servico"].Value);
+
+                string sql = @"
+        SELECT U.Nproprio, U.Email, U.Telefone, P.Especializacao, P.Media_rating, E.Nome_empresa
+        FROM Servico S
+        JOIN Profissional P ON S.Profissional = P.ID
+        JOIN Utilizador U ON P.ID = U.ID_Utilizador
+        LEFT JOIN Empresa E ON P.Empresa = E.NIPC
+        WHERE S.Num_servico = @ServicoID";
+
+                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                {
+                    cmd.Parameters.AddWithValue("@ServicoID", servicoID);
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            label7.Text = "Nome: " + reader["Nproprio"].ToString();
+                            label10.Text = "Email: " + reader["Email"].ToString();
+                            label9.Text = "Telefone: " + reader["Telefone"].ToString();
+                            label8.Text = "Especializacao: " + reader["Especializacao"].ToString();
+                            label11.Text = "Rating médio: " +
+                                (reader["Media_rating"] != DBNull.Value
+                                    ? Convert.ToDecimal(reader["Media_rating"]).ToString("0.00")
+                                    : "Sem avaliações");
+
+                            label13.Text = "Empresa: " +
+                                (reader["Nome_empresa"] != DBNull.Value
+                                    ? reader["Nome_empresa"].ToString()
+                                    : "Sem empresa");
+
+                            panel3.Visible = true;
+                        }
+                        else
+                        {
+                            panel3.Visible = false;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao obter dados do profissional: " + ex.Message);
+            }
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            if (dataGridView1.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Selecione um pedido para cancelar.");
+                return;
+            }
+
+            int idPedido = Convert.ToInt32(dataGridView1.SelectedRows[0].Cells["ID_pedido"].Value);
+
+            var confirmar = MessageBox.Show("Tem a certeza que deseja cancelar este pedido?", "Confirmar cancelamento", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (confirmar != DialogResult.Yes) return;
+
+            try
+            {
+                if (!DatabaseHelper.VerifyConnection())
+                {
+                    MessageBox.Show("Erro na conexão com a base de dados.");
+                    return;
+                }
+
+                string sql = "DELETE FROM PedidoServico WHERE ID_pedido = @idPedido AND Estado = 'Pendente'";
+
+                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                {
+                    cmd.Parameters.AddWithValue("@idPedido", idPedido);
+
+                    int rows = cmd.ExecuteNonQuery();
+                    if (rows > 0)
+                    {
+                        MessageBox.Show("Pedido cancelado com sucesso.");
+                        CarregarPedidosPorEstado("Pendente");
+                    }
+                    else
+                    {
+                        MessageBox.Show("Erro ao cancelar o pedido. Verifique se ainda está pendente.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro: " + ex.Message);
+            }
+        }
+
+        private void pictureBox1_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }
 

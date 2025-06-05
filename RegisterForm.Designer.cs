@@ -44,9 +44,9 @@
             this.radioButton1 = new System.Windows.Forms.RadioButton();
             this.radioButton2 = new System.Windows.Forms.RadioButton();
             this.panel1 = new System.Windows.Forms.Panel();
-            this.panel2 = new System.Windows.Forms.Panel();
             this.label7 = new System.Windows.Forms.Label();
             this.textBox7 = new System.Windows.Forms.TextBox();
+            this.panel2 = new System.Windows.Forms.Panel();
             this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -148,11 +148,11 @@
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(580, 403);
+            this.button1.Location = new System.Drawing.Point(124, 385);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
+            this.button1.Size = new System.Drawing.Size(153, 42);
             this.button1.TabIndex = 12;
-            this.button1.Text = "button1";
+            this.button1.Text = "Criar Conta";
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
@@ -189,13 +189,6 @@
             this.panel1.Size = new System.Drawing.Size(200, 100);
             this.panel1.TabIndex = 15;
             // 
-            // panel2
-            // 
-            this.panel2.Location = new System.Drawing.Point(376, 266);
-            this.panel2.Name = "panel2";
-            this.panel2.Size = new System.Drawing.Size(200, 100);
-            this.panel2.TabIndex = 16;
-            // 
             // label7
             // 
             this.label7.AutoSize = true;
@@ -203,7 +196,7 @@
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(100, 16);
             this.label7.TabIndex = 18;
-            this.label7.Text = "Especializacao";
+            this.label7.Text = "Especialização";
             // 
             // textBox7
             // 
@@ -211,6 +204,13 @@
             this.textBox7.Name = "textBox7";
             this.textBox7.Size = new System.Drawing.Size(100, 22);
             this.textBox7.TabIndex = 17;
+            // 
+            // panel2
+            // 
+            this.panel2.Location = new System.Drawing.Point(376, 266);
+            this.panel2.Name = "panel2";
+            this.panel2.Size = new System.Drawing.Size(200, 100);
+            this.panel2.TabIndex = 16;
             // 
             // RegisterForm
             // 
