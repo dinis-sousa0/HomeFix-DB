@@ -85,13 +85,9 @@ namespace homefix
 
             try
             {
-                string insertUtilizador = @"
-            INSERT INTO Utilizador (Nproprio, Napelido, Email, Telefone, PassHash, Data_inscricao, Morada)
-            VALUES (@pNome, @uNome, @Email, @telefone, @senha, GETDATE(), @morada);
-            SELECT SCOPE_IDENTITY();";
-
-                using (SqlCommand cmd = new SqlCommand(insertUtilizador, DatabaseHelper.GetConnection()))
+                using (SqlCommand cmd = new SqlCommand("spRegistarUtilizador", DatabaseHelper.GetConnection()))
                 {
+                    cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@pNome", pNome);
                     cmd.Parameters.AddWithValue("@uNome", uNome);
                     cmd.Parameters.AddWithValue("@Email", email);
@@ -99,41 +95,22 @@ namespace homefix
                     cmd.Parameters.AddWithValue("@senha", senha);
                     cmd.Parameters.AddWithValue("@morada", morada);
 
-                    // Obter o ID do novo utilizador
-                    object result = cmd.ExecuteScalar();
-                    if (result == null || !int.TryParse(result.ToString(), out int novoID))
-                    {
-                        MessageBox.Show("Erro ao obter ID do utilizador.");
-                        return;
-                    }
-
-                    // Inserir na tabela Cliente ou Profissional com base no botão selecionado
-                    string insertTipo = "";
                     if (radioButton1.Checked)
                     {
-                        insertTipo = "INSERT INTO Cliente (ID, Preferencia) VALUES (@id, NULL);";
+                        cmd.Parameters.AddWithValue("@tipo", "cliente");
+                        cmd.Parameters.AddWithValue("@esp", DBNull.Value);
                     }
-                    else if (radioButton2.Checked)
+                    else
                     {
-                        insertTipo = "INSERT INTO Profissional (ID, Especializacao, Media_rating, Empresa) VALUES (@id, @esp, NULL, NULL);";
+                        cmd.Parameters.AddWithValue("@tipo", "profissional");
+                        cmd.Parameters.AddWithValue("@esp", especializacao);
                     }
 
-                    if (!string.IsNullOrEmpty(insertTipo))
-                    {
-                        using (SqlCommand tipoCmd = new SqlCommand(insertTipo, DatabaseHelper.GetConnection()))
-                        {
-                            tipoCmd.Parameters.AddWithValue("@id", novoID);
-                            if (radioButton2.Checked)
-                            {
-                                tipoCmd.Parameters.AddWithValue("@esp", especializacao);
-                            }
-                            tipoCmd.ExecuteNonQuery();
-                        }
-                    }
-
-                    MessageBox.Show("Registo efetuado com sucesso!");
-                    this.Close();
+                    cmd.ExecuteNonQuery();
                 }
+
+                MessageBox.Show("Registo efetuado com sucesso!");
+                this.Close();
             }
             catch (Exception ex)
             {

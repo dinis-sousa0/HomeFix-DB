@@ -145,6 +145,7 @@ namespace homefix
             {
                 MessageBox.Show("Erro ao carregar pedidos: " + ex.Message);
             }
+
         }
 
         private void tabPage2_Click(object sender, EventArgs e)
@@ -452,5 +453,62 @@ namespace homefix
             }
         }
 
+        private void button5_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void button9_Click(object sender, EventArgs e)
+        {
+            if (dataGridView1.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Selecione um pedido.");
+                return;
+            }
+
+            DataGridViewRow row = dataGridView1.SelectedRows[0];
+
+            if (row.Cells["Num_servico"].Value == DBNull.Value)
+            {
+                MessageBox.Show("Este pedido ainda não tem serviço associado.");
+                return;
+            }
+
+            int servicoID = Convert.ToInt32(row.Cells["Num_servico"].Value);
+            string custoStr = row.Cells["Custo"].Value?.ToString();
+
+            if (string.IsNullOrWhiteSpace(custoStr))
+            {
+                MessageBox.Show("O custo ainda não foi definido. Não é possível concluir.");
+                return;
+            }
+
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand(@"UPDATE PedidoServico 
+                                                 SET Estado = 'Concluido' 
+                                                 WHERE Servico = @ServicoID", DatabaseHelper.GetConnection()))
+                {
+                    cmd.Parameters.AddWithValue("@ServicoID", servicoID);
+                    int rows = cmd.ExecuteNonQuery();
+
+                    if (rows > 0)
+                        MessageBox.Show("Pedido concluído com sucesso!");
+                    else
+                        MessageBox.Show("Erro ao concluir pedido.");
+
+                    CarregarPedidosPendentes();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao concluir: " + ex.Message);
+            }
+        }
+
+        private void dataGridView4_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
     }
 }

@@ -41,6 +41,10 @@
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.tabPage3 = new System.Windows.Forms.TabPage();
             this.tabPage4 = new System.Windows.Forms.TabPage();
+            this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.button6 = new System.Windows.Forms.Button();
+            this.button8 = new System.Windows.Forms.Button();
+            this.comboBox1 = new System.Windows.Forms.ComboBox();
             this.label5 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
@@ -51,21 +55,21 @@
             this.textBox2 = new System.Windows.Forms.TextBox();
             this.dataGridView3 = new System.Windows.Forms.DataGridView();
             this.button7 = new System.Windows.Forms.Button();
-            this.button6 = new System.Windows.Forms.Button();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.comboBox1 = new System.Windows.Forms.ComboBox();
             this.textBox3 = new System.Windows.Forms.TextBox();
             this.button3 = new System.Windows.Forms.Button();
-            this.button8 = new System.Windows.Forms.Button();
-            this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.button9 = new System.Windows.Forms.Button();
+            this.dataGridView4 = new System.Windows.Forms.DataGridView();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView2)).BeginInit();
             this.tabPage2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
+            this.tabPage3.SuspendLayout();
             this.tabPage4.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.dataGridView3)).BeginInit();
             this.groupBox2.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView3)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView4)).BeginInit();
             this.SuspendLayout();
             // 
             // textBox1
@@ -145,6 +149,7 @@
             // 
             // tabPage2
             // 
+            this.tabPage2.Controls.Add(this.button9);
             this.tabPage2.Controls.Add(this.button5);
             this.tabPage2.Controls.Add(this.button4);
             this.tabPage2.Controls.Add(this.dataGridView1);
@@ -165,6 +170,7 @@
             this.button5.TabIndex = 2;
             this.button5.Text = "Cancelar";
             this.button5.UseVisualStyleBackColor = true;
+            this.button5.Click += new System.EventHandler(this.button5_Click);
             // 
             // button4
             // 
@@ -189,11 +195,12 @@
             // 
             // tabPage3
             // 
+            this.tabPage3.Controls.Add(this.dataGridView4);
             this.tabPage3.Location = new System.Drawing.Point(4, 25);
             this.tabPage3.Name = "tabPage3";
             this.tabPage3.Size = new System.Drawing.Size(1457, 531);
             this.tabPage3.TabIndex = 2;
-            this.tabPage3.Text = "tabPage3";
+            this.tabPage3.Text = "Pedidos Concluidos";
             this.tabPage3.UseVisualStyleBackColor = true;
             this.tabPage3.Click += new System.EventHandler(this.tabPage3_Click);
             // 
@@ -217,6 +224,46 @@
             this.tabPage4.TabIndex = 3;
             this.tabPage4.Text = "Gestor Empresas";
             this.tabPage4.UseVisualStyleBackColor = true;
+            // 
+            // groupBox2
+            // 
+            this.groupBox2.Controls.Add(this.button6);
+            this.groupBox2.Controls.Add(this.button8);
+            this.groupBox2.Controls.Add(this.comboBox1);
+            this.groupBox2.Location = new System.Drawing.Point(779, 39);
+            this.groupBox2.Name = "groupBox2";
+            this.groupBox2.Size = new System.Drawing.Size(393, 128);
+            this.groupBox2.TabIndex = 2;
+            this.groupBox2.TabStop = false;
+            this.groupBox2.Text = "Associar a Empresa";
+            // 
+            // button6
+            // 
+            this.button6.Location = new System.Drawing.Point(217, 33);
+            this.button6.Name = "button6";
+            this.button6.Size = new System.Drawing.Size(99, 23);
+            this.button6.TabIndex = 2;
+            this.button6.Text = "Associar";
+            this.button6.UseVisualStyleBackColor = true;
+            this.button6.Click += new System.EventHandler(this.button6_Click);
+            // 
+            // button8
+            // 
+            this.button8.Location = new System.Drawing.Point(217, 80);
+            this.button8.Name = "button8";
+            this.button8.Size = new System.Drawing.Size(99, 23);
+            this.button8.TabIndex = 13;
+            this.button8.Text = "Independente";
+            this.button8.UseVisualStyleBackColor = true;
+            this.button8.Click += new System.EventHandler(this.button8_Click);
+            // 
+            // comboBox1
+            // 
+            this.comboBox1.FormattingEnabled = true;
+            this.comboBox1.Location = new System.Drawing.Point(36, 32);
+            this.comboBox1.Name = "comboBox1";
+            this.comboBox1.Size = new System.Drawing.Size(121, 24);
+            this.comboBox1.TabIndex = 0;
             // 
             // label5
             // 
@@ -302,16 +349,6 @@
             this.button7.UseVisualStyleBackColor = true;
             this.button7.Click += new System.EventHandler(this.button7_Click);
             // 
-            // button6
-            // 
-            this.button6.Location = new System.Drawing.Point(217, 33);
-            this.button6.Name = "button6";
-            this.button6.Size = new System.Drawing.Size(99, 23);
-            this.button6.TabIndex = 2;
-            this.button6.Text = "Associar";
-            this.button6.UseVisualStyleBackColor = true;
-            this.button6.Click += new System.EventHandler(this.button6_Click);
-            // 
             // groupBox1
             // 
             this.groupBox1.Location = new System.Drawing.Point(779, 241);
@@ -320,14 +357,6 @@
             this.groupBox1.TabIndex = 1;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Registo Nova Empresa";
-            // 
-            // comboBox1
-            // 
-            this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Location = new System.Drawing.Point(36, 32);
-            this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(121, 24);
-            this.comboBox1.TabIndex = 0;
             // 
             // textBox3
             // 
@@ -347,27 +376,26 @@
             this.button3.UseVisualStyleBackColor = true;
             this.button3.Click += new System.EventHandler(this.button3_Click);
             // 
-            // button8
+            // button9
             // 
-            this.button8.Location = new System.Drawing.Point(217, 80);
-            this.button8.Name = "button8";
-            this.button8.Size = new System.Drawing.Size(99, 23);
-            this.button8.TabIndex = 13;
-            this.button8.Text = "Independente";
-            this.button8.UseVisualStyleBackColor = true;
-            this.button8.Click += new System.EventHandler(this.button8_Click);
+            this.button9.Location = new System.Drawing.Point(892, 23);
+            this.button9.Name = "button9";
+            this.button9.Size = new System.Drawing.Size(151, 43);
+            this.button9.TabIndex = 3;
+            this.button9.Text = "Concluir Pedido";
+            this.button9.UseVisualStyleBackColor = true;
+            this.button9.Click += new System.EventHandler(this.button9_Click);
             // 
-            // groupBox2
+            // dataGridView4
             // 
-            this.groupBox2.Controls.Add(this.button6);
-            this.groupBox2.Controls.Add(this.button8);
-            this.groupBox2.Controls.Add(this.comboBox1);
-            this.groupBox2.Location = new System.Drawing.Point(779, 39);
-            this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(393, 128);
-            this.groupBox2.TabIndex = 2;
-            this.groupBox2.TabStop = false;
-            this.groupBox2.Text = "Associar a Empresa";
+            this.dataGridView4.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dataGridView4.Location = new System.Drawing.Point(8, 14);
+            this.dataGridView4.Name = "dataGridView4";
+            this.dataGridView4.RowHeadersWidth = 51;
+            this.dataGridView4.RowTemplate.Height = 24;
+            this.dataGridView4.Size = new System.Drawing.Size(796, 498);
+            this.dataGridView4.TabIndex = 0;
+            this.dataGridView4.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dataGridView4_CellContentClick);
             // 
             // ProfissionlForm
             // 
@@ -385,10 +413,12 @@
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView2)).EndInit();
             this.tabPage2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
+            this.tabPage3.ResumeLayout(false);
             this.tabPage4.ResumeLayout(false);
             this.tabPage4.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.dataGridView3)).EndInit();
             this.groupBox2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView3)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.dataGridView4)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -426,5 +456,7 @@
         private System.Windows.Forms.TextBox textBox2;
         private System.Windows.Forms.Button button8;
         private System.Windows.Forms.GroupBox groupBox2;
+        private System.Windows.Forms.Button button9;
+        private System.Windows.Forms.DataGridView dataGridView4;
     }
 }

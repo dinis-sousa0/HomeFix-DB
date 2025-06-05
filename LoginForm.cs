@@ -105,5 +105,15 @@ namespace homefix
             RegisterForm registerForm = new RegisterForm();
             registerForm.ShowDialog(); // Abre o formulário de cadastro como modal (bloqueia o Form1 até fechar)
         }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label2_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }
