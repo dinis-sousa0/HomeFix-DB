@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(LoginForm));
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.textBox1 = new System.Windows.Forms.TextBox();
@@ -48,7 +49,6 @@
             this.label1.Size = new System.Drawing.Size(41, 16);
             this.label1.TabIndex = 0;
             this.label1.Text = "Email";
-            this.label1.Click += new System.EventHandler(this.label1_Click);
             // 
             // label2
             // 
@@ -58,7 +58,6 @@
             this.label2.Size = new System.Drawing.Size(97, 16);
             this.label2.TabIndex = 1;
             this.label2.Text = "Palavra-Passe";
-            this.label2.Click += new System.EventHandler(this.label2_Click);
             // 
             // textBox1
             // 
@@ -124,7 +123,6 @@
             this.label4.Size = new System.Drawing.Size(74, 16);
             this.label4.TabIndex = 8;
             this.label4.Text = "Bem-Vindo";
-            this.label4.Click += new System.EventHandler(this.label4_Click);
             // 
             // LoginForm
             // 
@@ -140,8 +138,9 @@
             this.Controls.Add(this.textBox1);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "LoginForm";
-            this.Text = "Form1";
+            this.Text = "Login HomeFix";
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();

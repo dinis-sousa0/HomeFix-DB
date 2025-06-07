@@ -21,30 +21,16 @@ namespace homefix
         {
             InitializeComponent();
             emailUtilizador = email;
-            clienteID = ObterClienteIDPorEmail(emailUtilizador);
+            clienteID = DataLoader.ObterUtilizadorIDPorEmail(emailUtilizador);
             textBox3.Text = clienteID.ToString();
             CarregarTiposPagamento();
             DataLoader.CarregarEspecializacoes(comboBox2);
+            panel1.Visible = false;
+            panel2.Visible = false;
+            panel4.Visible = false;
 
-            // Opcional: carregar dados iniciais em outras abas se desejar
         }
 
-        private int ObterClienteIDPorEmail(string email)
-        {
-            if (!DatabaseHelper.VerifyConnection())
-                throw new Exception("Erro na conexão com a base de dados.");
-
-            string sql = "SELECT ID_Utilizador FROM Utilizador WHERE Email = @Email";
-            using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
-            {
-                cmd.Parameters.AddWithValue("@Email", email);
-                object result = cmd.ExecuteScalar();
-                if (result != null && int.TryParse(result.ToString(), out int id))
-                    return id;
-                else
-                    throw new Exception("Cliente não encontrado.");
-            }
-        }
 
         private void CarregarTiposPagamento()
         {
@@ -56,10 +42,10 @@ namespace homefix
                     return;
                 }
 
-                string sql = "SELECT Tipo FROM Tipo_Pagamento ORDER BY Tipo";
-
-                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                using (SqlCommand cmd = new SqlCommand("spCarregarTiposPagamento", DatabaseHelper.GetConnection()))
                 {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
                     using (SqlDataReader reader = cmd.ExecuteReader())
                     {
                         comboBox1.Items.Clear(); // Limpa itens atuais
@@ -77,10 +63,6 @@ namespace homefix
             }
         }
 
-        private void label2_Click(object sender, EventArgs e)
-        {
-
-        }
 
         private void button1_Click(object sender, EventArgs e)
         {
@@ -142,7 +124,11 @@ namespace homefix
             }
             else if (tabControl1.SelectedTab == tabPage4)  // Exemplo de aba 4 para pedidos concluídos
             {
-                CarregarPedidosConcluidos(); // Novo método específico
+                CarregarPedidosConcluidos(clienteID); // Novo método específico
+            }
+            else if (tabControl1.SelectedTab == tabPage7) // Newsletter (nova aba)
+            {
+                CarregarStatusNewsletter();
             }
         }
 
@@ -189,59 +175,38 @@ namespace homefix
             }
         }
 
-        private void CarregarPedidosConcluidos()
+        public void CarregarPedidosConcluidos(int clienteID)
         {
             try
             {
-                if (!DatabaseHelper.VerifyConnection())
+                using (SqlConnection conn = DatabaseHelper.GetConnection())
                 {
-                    MessageBox.Show("Erro na conexão com a base de dados.");
-                    return;
-                }
-
-                // 1. Pedidos concluídos sem pagamento (para "Por Pagar")
-                string sqlPorPagar = @"
-            SELECT P.ID_pedido, P.Localizacao, P.data_pedido, P.Descricao, P.Estado, P.Servico
-            FROM PedidoServico P
-            LEFT JOIN Pagamento Pg ON P.Servico = Pg.Servico AND Pg.Cliente = @clienteID
-            WHERE P.Cliente = @clienteID AND P.Estado = 'Concluido' AND Pg.ID_transacao IS NULL";
-
-                using (SqlCommand cmd1 = new SqlCommand(sqlPorPagar, DatabaseHelper.GetConnection()))
-                {
-                    cmd1.Parameters.AddWithValue("@clienteID", clienteID);
-                    using (SqlDataAdapter adapter = new SqlDataAdapter(cmd1))
+                    // Pedidos por pagar (sem pagamento)
+                    using (SqlCommand cmdPorPagar = new SqlCommand("spPedidosPorPagar", conn))
                     {
-                        DataTable dt = new DataTable();
-                        adapter.Fill(dt);
-                        dataGridView3.DataSource = dt;
+                        cmdPorPagar.CommandType = CommandType.StoredProcedure;
+                        cmdPorPagar.Parameters.AddWithValue("@ClienteID", clienteID);
+
+                        using (SqlDataAdapter adapter = new SqlDataAdapter(cmdPorPagar))
+                        {
+                            DataTable dtPorPagar = new DataTable();
+                            adapter.Fill(dtPorPagar);
+                            dataGridView3.DataSource = dtPorPagar;
+                        }
                     }
-                }
 
-                // 2. Todos pedidos concluídos (para "Todos")
-                string sqlTodos = @"
-            SELECT 
-                P.ID_pedido, 
-                P.Localizacao, 
-                P.data_pedido, 
-                P.Descricao, 
-                P.Estado, 
-                P.Servico
-            FROM PedidoServico P
-            JOIN Servico S ON P.Servico = S.Num_servico
-            JOIN Pagamento PAG ON PAG.Servico = S.Num_servico AND PAG.Cliente = P.Cliente
-            WHERE 
-                P.Cliente = @clienteID 
-                AND P.Estado = 'Concluido'
-                AND PAG.ID_transacao IS NOT NULL";
-
-                using (SqlCommand cmd2 = new SqlCommand(sqlTodos, DatabaseHelper.GetConnection()))
-                {
-                    cmd2.Parameters.AddWithValue("@clienteID", clienteID);
-                    using (SqlDataAdapter adapter = new SqlDataAdapter(cmd2))
+                    // Pedidos concluídos (com pagamento)
+                    using (SqlCommand cmdConcluidos = new SqlCommand("spPedidosConcluidos", conn))
                     {
-                        DataTable dt = new DataTable();
-                        adapter.Fill(dt);
-                        dataGridView4.DataSource = dt;
+                        cmdConcluidos.CommandType = CommandType.StoredProcedure;
+                        cmdConcluidos.Parameters.AddWithValue("@ClienteID", clienteID);
+
+                        using (SqlDataAdapter adapter = new SqlDataAdapter(cmdConcluidos))
+                        {
+                            DataTable dtConcluidos = new DataTable();
+                            adapter.Fill(dtConcluidos);
+                            dataGridView4.DataSource = dtConcluidos;
+                        }
                     }
                 }
             }
@@ -251,24 +216,6 @@ namespace homefix
             }
         }
 
-        private void tabPage2_Click(object sender, EventArgs e)
-        {
-        }
-
-        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
-        {
-
-        }
-
-        private void tabPage3_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void tabPage1_Click(object sender, EventArgs e)
-        {
-
-        }
 
         private void button3_Click(object sender, EventArgs e)
         {
@@ -277,134 +224,98 @@ namespace homefix
 
         private void button2_Click(object sender, EventArgs e)
         {
-            if (dataGridView3.SelectedRows.Count == 0)
+            if (dataGridView4.SelectedRows.Count == 0)
             {
                 MessageBox.Show("Selecione um pedido primeiro.");
                 return;
             }
 
-            int idPedido = Convert.ToInt32(dataGridView3.SelectedRows[0].Cells["ID_pedido"].Value);
-
+            int idPedido = Convert.ToInt32(dataGridView4.SelectedRows[0].Cells["ID_pedido"].Value);
             string comentario = textBox5.Text.Trim();
+
             if (!decimal.TryParse(textBox4.Text, out decimal rating) || rating < 0 || rating > 5)
             {
                 MessageBox.Show("Insira um rating válido (0-5).");
                 return;
             }
 
-            // Obtem serviço e profissional do pedido
-            string sql = @"SELECT S.Num_servico, S.Profissional
-                   FROM PedidoServico P
-                   JOIN Servico S ON P.Servico = S.Num_servico
-                   WHERE P.ID_pedido = @idPedido";
-
-            using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+            try
             {
-                cmd.Parameters.AddWithValue("@idPedido", idPedido);
-                using (SqlDataReader reader = cmd.ExecuteReader())
+                using (SqlCommand cmd = new SqlCommand("spInserirAvaliacao", DatabaseHelper.GetConnection()))
                 {
-                    if (reader.Read())
-                    {
-                        int servicoID = reader.GetInt32(0);
-                        int profissionalID = reader.GetInt32(1);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ID_pedido", idPedido);
+                    cmd.Parameters.AddWithValue("@Comentario", comentario);
+                    cmd.Parameters.AddWithValue("@Rating", rating);
 
-                        reader.Close();
+                    cmd.ExecuteNonQuery();
 
-                        // Inserir avaliação
-                        string insertSql = @"INSERT INTO Avaliacao (Servico, Profissional, Comentario, Rating, data_aval)
-                                     VALUES (@servico, @profissional, @comentario, @rating, @data)";
-                        using (SqlCommand insertCmd = new SqlCommand(insertSql, DatabaseHelper.GetConnection()))
-                        {
-                            insertCmd.Parameters.AddWithValue("@servico", servicoID);
-                            insertCmd.Parameters.AddWithValue("@profissional", profissionalID);
-                            insertCmd.Parameters.AddWithValue("@comentario", comentario);
-                            insertCmd.Parameters.AddWithValue("@rating", rating);
-                            insertCmd.Parameters.AddWithValue("@data", DateTime.Now);
-
-                            int rows = insertCmd.ExecuteNonQuery();
-                            if (rows > 0)
-                            {
-                                MessageBox.Show("Avaliação enviada com sucesso!");
-                                panel1.Visible = false;
-                                textBox5.Clear();
-                                textBox4.Clear();
-                            }
-                            else
-                            {
-                                MessageBox.Show("Erro ao enviar avaliação.");
-                            }
-                        }
-                    }
-                    else
-                    {
-                        MessageBox.Show("Erro ao obter dados do serviço.");
-                    }
+                    MessageBox.Show("Avaliação enviada com sucesso!");
+                    panel1.Visible = false;
+                    textBox5.Clear();
+                    textBox4.Clear();
+                    dataGridView4_SelectionChanged(dataGridView4, EventArgs.Empty);
                 }
+            }
+            catch (SqlException ex)
+            {
+                MessageBox.Show("Erro: " + ex.Message);
             }
         }
 
 
-        private void label3_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void panel1_Paint(object sender, PaintEventArgs e)
-        {
-
-        }
-
         private void dataGridView3_SelectionChanged(object sender, EventArgs e)
         {
-            if (dataGridView3.SelectedRows.Count > 0)
+            if (dataGridView3.SelectedRows.Count == 0)
             {
-                panel1.Visible = true;
+                panel2.Visible = false;
+                return;
+            }
 
-                int servicoID = Convert.ToInt32(dataGridView3.SelectedRows[0].Cells["Servico"].Value);
+            int servicoID = Convert.ToInt32(dataGridView3.SelectedRows[0].Cells["Servico"].Value);
 
-                if (!DatabaseHelper.VerifyConnection())
+            if (!DatabaseHelper.VerifyConnection())
+            {
+                MessageBox.Show("Erro de ligação à base de dados.");
+                return;
+            }
+
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("spVerificarPagamento", DatabaseHelper.GetConnection()))
                 {
-                    MessageBox.Show("Erro de ligação à base de dados.");
-                    return;
-                }
-
-                string sql = @"SELECT COUNT(*) FROM Pagamento 
-                       WHERE Servico = @ServicoID AND Cliente = @ClienteID";
-
-                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
-                {
+                    cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@ServicoID", servicoID);
                     cmd.Parameters.AddWithValue("@ClienteID", clienteID);
 
-                    int count = (int)cmd.ExecuteScalar();
-
-                    if (count == 0)
+                    SqlParameter outputParam = new SqlParameter("@PagamentoExiste", SqlDbType.Bit)
                     {
-                        panel2.Visible = true;
-                    }
-                    else
+                        Direction = ParameterDirection.Output
+                    };
+                    cmd.Parameters.Add(outputParam);
+
+                    cmd.ExecuteNonQuery();
+
+                    bool pagamentoExiste = (bool)outputParam.Value;
+
+                    if (pagamentoExiste)
                     {
                         panel2.Visible = false;
                         MessageBox.Show("Pagamento já foi efetuado para este serviço.");
                     }
+                    else
+                    {
+                        panel2.Visible = true;
+                    }
                 }
             }
-            else
+            catch (Exception ex)
             {
-                panel1.Visible = false;
-                panel2.Visible = false;
+                MessageBox.Show("Erro: " + ex.Message);
             }
         }
 
-        private void label6_Click(object sender, EventArgs e)
-        {
 
-        }
-
-        private void dataGridView3_CellContentClick(object sender, DataGridViewCellEventArgs e)
-        {
-
-        }
 
         private void button4_Click(object sender, EventArgs e)
         {
@@ -420,121 +331,110 @@ namespace homefix
                 return;
             }
 
-            try
+            string resultado = DataLoader.RegistarPagamento(servicoID, clienteID, sumario, tipoNome);
+            MessageBox.Show(resultado);
+
+            if (resultado == "Pagamento registado com sucesso!")
             {
-                // 1. Obter o ID do tipo de pagamento
-                int tipoID = -1;
-                string sqlTipo = "SELECT ID_Tipo FROM Tipo_Pagamento WHERE Tipo = @TipoNome";
-
-                using (SqlCommand cmdTipo = new SqlCommand(sqlTipo, DatabaseHelper.GetConnection()))
-                {
-                    cmdTipo.Parameters.AddWithValue("@TipoNome", tipoNome);
-                    object result = cmdTipo.ExecuteScalar();
-
-                    if (result == null)
-                    {
-                        MessageBox.Show("Tipo de pagamento inválido.");
-                        return;
-                    }
-
-                    tipoID = Convert.ToInt32(result);
-                }
-
-                // 2. Inserir o pagamento com o tipoID correto
-                string sql = @"INSERT INTO Pagamento (Servico, Cliente, Sumario, Tipo)
-                       VALUES (@ServicoID, @ClienteID, @Sumario, @Tipo)";
-
-                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
-                {
-                    cmd.Parameters.AddWithValue("@ServicoID", servicoID);
-                    cmd.Parameters.AddWithValue("@ClienteID", clienteID);
-                    cmd.Parameters.AddWithValue("@Sumario", sumario);
-                    cmd.Parameters.AddWithValue("@Tipo", tipoID);
-
-                    int rows = cmd.ExecuteNonQuery();
-
-                    if (rows > 0)
-                    {
-                        MessageBox.Show("Pagamento registado com sucesso!");
-                        panel2.Visible = false;
-
-                        // Atualiza a lista de pedidos concluídos para refletir o pagamento
-                        CarregarPedidosConcluidos();
-                    }
-                    else
-                    {
-                        MessageBox.Show("Erro ao registar pagamento.");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Erro: " + ex.Message);
+                panel2.Visible = false;
+                CarregarPedidosConcluidos(clienteID);
             }
         }
 
-        private void label7_Click(object sender, EventArgs e)
-        {
-
-        }
 
         private void dataGridView2_SelectionChanged(object sender, EventArgs e)
         {
             if (dataGridView2.SelectedRows.Count == 0)
             {
-                // Ocultar painel se não houver seleção
                 panel3.Visible = false;
                 return;
             }
 
-            try
+            int servicoID = Convert.ToInt32(dataGridView2.SelectedRows[0].Cells["Servico"].Value);
+
+            if (DataLoader.ObterDadosProfissionalPorServico(servicoID,
+                out string nome, out string email, out string telefone, out string especializacao,
+                out string rating, out string empresa))
             {
-                int servicoID = Convert.ToInt32(dataGridView2.SelectedRows[0].Cells["Servico"].Value);
+                label7.Text = nome;
+                label10.Text = email;
+                label9.Text = telefone;
+                label8.Text = especializacao;
+                label11.Text = rating;
+                label13.Text = empresa;
 
-                string sql = @"
-        SELECT U.Nproprio, U.Email, U.Telefone, P.Especializacao, P.Media_rating, E.Nome_empresa
-        FROM Servico S
-        JOIN Profissional P ON S.Profissional = P.ID
-        JOIN Utilizador U ON P.ID = U.ID_Utilizador
-        LEFT JOIN Empresa E ON P.Empresa = E.NIPC
-        WHERE S.Num_servico = @ServicoID";
+                panel3.Visible = true;
+            }
+            else
+            {
+                panel3.Visible = false;
+            }
+        }
 
-                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+        private void dataGridView4_SelectionChanged(object sender, EventArgs e)
+        {
+            if (tabControl2.SelectedTab == tabPage6 && dataGridView4.SelectedRows.Count > 0)
+            {
+                int idPedido = Convert.ToInt32(dataGridView4.SelectedRows[0].Cells["ID_pedido"].Value);
+
+                try
                 {
-                    cmd.Parameters.AddWithValue("@ServicoID", servicoID);
-
-                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    if (!DatabaseHelper.VerifyConnection())
                     {
-                        if (reader.Read())
-                        {
-                            label7.Text = "Nome: " + reader["Nproprio"].ToString();
-                            label10.Text = "Email: " + reader["Email"].ToString();
-                            label9.Text = "Telefone: " + reader["Telefone"].ToString();
-                            label8.Text = "Especializacao: " + reader["Especializacao"].ToString();
-                            label11.Text = "Rating médio: " +
-                                (reader["Media_rating"] != DBNull.Value
-                                    ? Convert.ToDecimal(reader["Media_rating"]).ToString("0.00")
-                                    : "Sem avaliações");
+                        MessageBox.Show("Erro na conexão com a base de dados.");
+                        panel1.Visible = false;
+                        return;
+                    }
 
-                            label13.Text = "Empresa: " +
-                                (reader["Nome_empresa"] != DBNull.Value
-                                    ? reader["Nome_empresa"].ToString()
-                                    : "Sem empresa");
+                    using (SqlCommand cmd = new SqlCommand("spObterAvaliacaoPorPedido", DatabaseHelper.GetConnection()))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@ID_pedido", idPedido);
 
-                            panel3.Visible = true;
-                        }
-                        else
+                        using (SqlDataReader reader = cmd.ExecuteReader())
                         {
-                            panel3.Visible = false;
+                            if (reader.Read())
+                            {
+                                bool existeAvaliacao = Convert.ToInt32(reader["ExisteAvaliacao"]) == 1;
+
+                                if (!existeAvaliacao)
+                                {
+                                    panel1.Visible = true;
+                                    panel4.Visible = false;
+                                    textBox5.Clear();
+                                    textBox4.Clear();
+                                }
+                                else
+                                {
+                                    panel1.Visible = false;
+                                    panel4.Visible = true;
+
+                                    decimal estrelas = reader["Rating"] != DBNull.Value ? Convert.ToDecimal(reader["Rating"]) : 0m;
+                                    string comentario = reader["Comentario"] != DBNull.Value ? reader["Comentario"].ToString() : "";
+
+                                    label16.Text = $"Avaliado em {estrelas} Estrela(s)";
+                                    textBox7.Text = comentario;
+                                }
+                            }
+                            else
+                            {
+                                panel1.Visible = false;
+                            }
                         }
                     }
                 }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Erro: " + ex.Message);
+                    panel1.Visible = false;
+                }
             }
-            catch (Exception ex)
+            else
             {
-                MessageBox.Show("Erro ao obter dados do profissional: " + ex.Message);
+                panel1.Visible = false;
             }
         }
+
 
         private void button5_Click(object sender, EventArgs e)
         {
@@ -557,13 +457,21 @@ namespace homefix
                     return;
                 }
 
-                string sql = "DELETE FROM PedidoServico WHERE ID_pedido = @idPedido AND Estado = 'Pendente'";
-
-                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                using (SqlCommand cmd = new SqlCommand("spCancelarPedido", DatabaseHelper.GetConnection()))
                 {
-                    cmd.Parameters.AddWithValue("@idPedido", idPedido);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ID_pedido", idPedido);
 
-                    int rows = cmd.ExecuteNonQuery();
+                    var outputParam = new SqlParameter("@RowsAffected", SqlDbType.Int)
+                    {
+                        Direction = ParameterDirection.Output
+                    };
+                    cmd.Parameters.Add(outputParam);
+
+                    cmd.ExecuteNonQuery();
+
+                    int rows = (int)outputParam.Value;
+
                     if (rows > 0)
                     {
                         MessageBox.Show("Pedido cancelado com sucesso.");
@@ -581,15 +489,128 @@ namespace homefix
             }
         }
 
-        private void pictureBox1_Click(object sender, EventArgs e)
-        {
 
+        private void button6_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (dataGridView4.SelectedRows.Count == 0)
+                    return;
+
+                int idPedido = Convert.ToInt32(dataGridView4.SelectedRows[0].Cells["ID_pedido"].Value);
+
+                // Confirmação do usuário
+                DialogResult confirm = MessageBox.Show(
+                    "Tem a certeza que deseja apagar esta avaliação?",
+                    "Confirmação", MessageBoxButtons.YesNo, MessageBoxIcon.Question
+                );
+
+                if (confirm == DialogResult.No)
+                    return;
+
+                using (SqlCommand cmd = new SqlCommand("spEliminarAvaliacaoPorPedido", DatabaseHelper.GetConnection()))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ID_pedido", idPedido);
+
+                    SqlParameter outputParam = new SqlParameter("@RowsAffected", SqlDbType.Int)
+                    {
+                        Direction = ParameterDirection.Output
+                    };
+                    cmd.Parameters.Add(outputParam);
+
+                    cmd.ExecuteNonQuery();
+
+                    int rowsAffected = (int)outputParam.Value;
+
+                    if (rowsAffected > 0)
+                    {
+                        MessageBox.Show("Avaliação eliminada com sucesso.");
+
+                        // Atualiza UI
+                        panel4.Visible = false;
+                        label16.Text = "";
+                        textBox5.Clear();
+
+                        // Forçar atualização da seleção para recarregar dados
+                        dataGridView4_SelectionChanged(dataGridView4, EventArgs.Empty);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Nenhuma avaliação encontrada para eliminar.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro: " + ex.Message);
+            }
+        }
+        private void CarregarStatusNewsletter()
+        {
+            try
+            {
+                using (SqlCommand cmd = new SqlCommand("spObterStatusNewsletter", DatabaseHelper.GetConnection()))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ClienteID", clienteID);
+
+                    SqlParameter outputParam = new SqlParameter("@ReceberNewsletter", SqlDbType.Bit)
+                    {
+                        Direction = ParameterDirection.Output
+                    };
+                    cmd.Parameters.Add(outputParam);
+
+                    cmd.ExecuteNonQuery();
+
+                    object result = outputParam.Value;
+
+                    if (result != DBNull.Value && result != null)
+                    {
+                        bool status = (bool)result;
+                        checkBox1.Checked = status;
+                    }
+                    else
+                    {
+                        checkBox1.Checked = false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao carregar status da newsletter: " + ex.Message);
+            }
+        }
+        private void AtualizarNewsletter()
+        {
+            try
+            {
+                int novoStatus = checkBox1.Checked ? 1 : 0;
+
+                using (SqlCommand cmd = new SqlCommand("spAtualizarNewsletter", DatabaseHelper.GetConnection()))
+                {
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ClienteID", clienteID);
+                    cmd.Parameters.AddWithValue("@NovoStatus", novoStatus);
+
+                    int rowsAffected = cmd.ExecuteNonQuery();
+                    if (rowsAffected > 0)
+                    {
+                        MessageBox.Show("Preferência de newsletter atualizada com sucesso!");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao atualizar newsletter: " + ex.Message);
+            }
+        }
+        private void buttonAtualizarNewsletter_Click(object sender, EventArgs e)
+        {
+            AtualizarNewsletter();
         }
 
-        private void label14_Click(object sender, EventArgs e)
-        {
-
-        }
     }
+
 }
 

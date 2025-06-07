@@ -20,52 +20,36 @@ namespace homefix
         {
             InitializeComponent();
             emailUtilizador = email;
-            profissionalID = ObterProfissionalIDPorEmail(emailUtilizador);
+            profissionalID = DataLoader.ObterUtilizadorIDPorEmail(emailUtilizador);
             textBox3.Text = profissionalID.ToString();
             comboBox2.Items.AddRange(new string[] { "Todos", "Pagos", "Não pagos" });
             comboBox2.SelectedIndex = 0; // Seleciona "Todos" por padrão
             comboBox2.SelectedIndexChanged += comboBox2_SelectedIndexChanged;
+            decimal? rating = DataLoader.ObterRatingProfissional(profissionalID);
+
+
+            if (rating.HasValue)
+            {
+                label9.Text = $"O meu rating: {rating.Value:0.0}";
+            }
+            else
+            {
+                label9.Text = "O meu rating: Sem avaliações";
+            }
 
             // Opcional: carregar dados iniciais em outras abas se desejar
         }
 
-        private int ObterProfissionalIDPorEmail(string email)
-        {
-            if (!DatabaseHelper.VerifyConnection())
-                throw new Exception("Erro na conexão com a base de dados.");
 
-            string sql = "SELECT ID_Utilizador FROM Utilizador WHERE Email = @Email";
-            using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
-            {
-                cmd.Parameters.AddWithValue("@Email", email);
-                object result = cmd.ExecuteScalar();
-                if (result != null && int.TryParse(result.ToString(), out int id))
-                    return id;
-                else
-                    throw new Exception("Profissional não encontrado.");
-            }
-        }
-
-        private void CarregarPedidosEmProgresso()
+        public void CarregarPedidosEmProgresso(int profissionalID)
         {
             try
             {
-                if (!DatabaseHelper.VerifyConnection())
+                using (SqlConnection conn = DatabaseHelper.GetConnection())
+                using (SqlCommand cmd = new SqlCommand("spCarregarPedidosEmProgresso", conn))
                 {
-                    MessageBox.Show("Erro na conexão com a base de dados.");
-                    return;
-                }
-
-                string sql = @"
-            SELECT ps.ID_pedido, ps.Localizacao, ps.data_pedido, ps.Descricao, ps.Estado,
-                   s.Num_servico, s.Sumario, s.Custo
-            FROM PedidoServico ps
-            JOIN Servico s ON ps.Servico = s.Num_servico
-            WHERE ps.Estado = 'Progresso' AND s.Profissional = @profissionalID";
-
-                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
-                {
-                    cmd.Parameters.AddWithValue("@profissionalID", profissionalID);
+                    cmd.CommandType = CommandType.StoredProcedure;
+                    cmd.Parameters.AddWithValue("@ProfissionalID", profissionalID);
 
                     using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
                     {
@@ -102,7 +86,7 @@ namespace homefix
         {
             if (tabControl1.SelectedTab == tabPage2)
             {
-                CarregarPedidosEmProgresso(); // carrega os pedidos em progresso do profissional
+                CarregarPedidosEmProgresso(profissionalID); // carrega os pedidos em progresso do profissional
             }
             else if (tabControl1.SelectedTab == tabPage3)
             {
@@ -121,11 +105,11 @@ namespace homefix
             if (!DatabaseHelper.VerifyConnection())
                 throw new Exception("Erro na conexão com a base de dados.");
 
-            string sql = "SELECT Espec FROM Profissional WHERE ID = @ProfissionalID";
-
-            using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+            using (SqlCommand cmd = new SqlCommand("sp_ObterEspecializacaoProfissional", DatabaseHelper.GetConnection()))
             {
+                cmd.CommandType = CommandType.StoredProcedure;
                 cmd.Parameters.AddWithValue("@ProfissionalID", profissionalID);
+
                 object result = cmd.ExecuteScalar();
                 if (result != null)
                     return result.ToString();
@@ -199,7 +183,6 @@ namespace homefix
                 return;
             }
 
-            // Obtem o ID do pedido selecionado
             int pedidoID = Convert.ToInt32(dataGridView2.SelectedRows[0].Cells["ID_pedido"].Value);
 
             try
@@ -210,51 +193,30 @@ namespace homefix
                     return;
                 }
 
-                using (SqlConnection cn = DatabaseHelper.GetConnection())
+                using (SqlCommand cmd = new SqlCommand("spAceitarPedido", DatabaseHelper.GetConnection()))
                 {
-                    using (SqlTransaction transaction = cn.BeginTransaction())
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    cmd.Parameters.AddWithValue("@PedidoID", pedidoID);
+                    cmd.Parameters.AddWithValue("@ProfissionalID", profissionalID);
+
+                    var outputParam = new SqlParameter("@NovoServicoID", SqlDbType.Int)
                     {
-                        try
-                        {
-                            // 1. Criar novo Serviço (Sumario e Custo NULL)
-                            string insertServico = @"INSERT INTO Servico (Sumario, Custo, Profissional) 
-                                             VALUES (NULL, NULL, @profissionalID);
-                                             SELECT CAST(SCOPE_IDENTITY() AS INT);";
+                        Direction = ParameterDirection.Output
+                    };
+                    cmd.Parameters.Add(outputParam);
 
-                            int novoServicoID;
-                            using (SqlCommand cmdInsertServico = new SqlCommand(insertServico, cn, transaction))
-                            {
-                                cmdInsertServico.Parameters.AddWithValue("@profissionalID", profissionalID);
-                                novoServicoID = (int)cmdInsertServico.ExecuteScalar();
-                            }
+                    cmd.ExecuteNonQuery();
 
-                            // 2. Atualizar pedido para associar serviço e mudar estado
-                            string updatePedido = @"UPDATE PedidoServico 
-                                            SET Estado = 'Progresso', Servico = @servicoID
-                                            WHERE ID_pedido = @pedidoID";
+                    int novoServicoID = (int)outputParam.Value;
 
-                            using (SqlCommand cmdUpdatePedido = new SqlCommand(updatePedido, cn, transaction))
-                            {
-                                cmdUpdatePedido.Parameters.AddWithValue("@servicoID", novoServicoID);
-                                cmdUpdatePedido.Parameters.AddWithValue("@pedidoID", pedidoID);
-                                int linhasAfetadas = cmdUpdatePedido.ExecuteNonQuery();
-
-                                if (linhasAfetadas == 0)
-                                    throw new Exception("Pedido não encontrado ou já foi aceito.");
-                            }
-
-                            transaction.Commit();
-
-                            MessageBox.Show("Pedido aceito com sucesso!");
-                            CarregarPedidosPendentes();  // Recarregar lista para atualizar os pedidos pendentes
-                        }
-                        catch (Exception ex)
-                        {
-                            transaction.Rollback();
-                            MessageBox.Show("Erro ao aceitar pedido: " + ex.Message);
-                        }
-                    }
+                    MessageBox.Show("Pedido aceito com sucesso!");
+                    CarregarPedidosPendentes(); // Atualiza lista
                 }
+            }
+            catch (SqlException ex)
+            {
+                MessageBox.Show("Erro ao aceitar pedido: " + ex.Message);
             }
             catch (Exception ex)
             {
@@ -286,7 +248,6 @@ namespace homefix
 
                 using (SqlConnection cn = DatabaseHelper.GetConnection())
                 {
-                    // Pega a primeira linha selecionada (podes adaptar para múltiplas se quiseres)
                     DataGridViewRow row = dataGridView1.SelectedRows[0];
 
                     int servicoID = Convert.ToInt32(row.Cells["Num_servico"].Value);
@@ -297,7 +258,7 @@ namespace homefix
 
                     if (string.IsNullOrWhiteSpace(custoStr))
                     {
-                        custoParam = DBNull.Value; // NULL no banco
+                        custoParam = DBNull.Value;
                     }
                     else if (decimal.TryParse(custoStr, out decimal custo))
                     {
@@ -309,23 +270,28 @@ namespace homefix
                         return;
                     }
 
-                    string sql = @"UPDATE Servico SET Sumario = @Sumario, Custo = @Custo WHERE Num_servico = @ServicoID";
-
-                    using (SqlCommand cmd = new SqlCommand(sql, cn))
+                    using (SqlCommand cmd = new SqlCommand("spAtualizarServico", cn))
                     {
+                        cmd.CommandType = CommandType.StoredProcedure;
+
+                        cmd.Parameters.AddWithValue("@NumServico", servicoID);
                         cmd.Parameters.AddWithValue("@Sumario", (object)sumario ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@Custo", custoParam);
-                        cmd.Parameters.AddWithValue("@ServicoID", servicoID);
+
                         cmd.ExecuteNonQuery();
                     }
 
                     MessageBox.Show("Alteração salva com sucesso.");
-                    CarregarPedidosEmProgresso(); // Atualiza a grid para mostrar o valor correto
+                    CarregarPedidosEmProgresso(profissionalID);
                 }
+            }
+            catch (SqlException ex)
+            {
+                MessageBox.Show("Erro ao atualizar serviço: " + ex.Message);
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erro ao atualizar serviço: " + ex.Message);
+                MessageBox.Show("Erro: " + ex.Message);
             }
         }
 
@@ -339,26 +305,37 @@ namespace homefix
                     return;
                 }
 
-                string sql = "SELECT NIPC, Nome_empresa, Endereço, Telefone, rating_empregados FROM Empresa";
-
-                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                // Usando a stored procedure que retorna empresas com rating
+                using (SqlCommand cmd = new SqlCommand("sp_ObterEmpresasComRating", DatabaseHelper.GetConnection()))
                 {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
                     DataTable dt = new DataTable();
                     using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
                     {
                         adapter.Fill(dt);
                     }
+
                     dataGridView3.DataSource = dt;
 
                     comboBox1.DisplayMember = "Nome_empresa";
                     comboBox1.ValueMember = "NIPC";
                     comboBox1.DataSource = dt;
+
+                    comboBox1.SelectedIndexChanged -= comboBox1_SelectedIndexChanged;
+                    comboBox1.SelectedIndexChanged += comboBox1_SelectedIndexChanged;
+
+                    AtualizarLabelRating();
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Erro ao carregar empresas: " + ex.Message);
             }
+        }
+        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            AtualizarLabelRating();
         }
 
         private void CarregarPedidosConcluidos(string filtro = "Todos")
@@ -371,38 +348,18 @@ namespace homefix
                     return;
                 }
 
-                // SQL base que traz pedidos concluídos
-                string sql = @"
-            SELECT ps.ID_pedido, ps.Localizacao, ps.data_pedido, ps.Descricao, ps.Estado,
-                   s.Num_servico, s.Sumario, s.Custo,
-                   CASE WHEN p.ID_transacao IS NOT NULL THEN 'Pago' ELSE 'Não pago' END AS StatusPagamento
-            FROM PedidoServico ps
-            JOIN Servico s ON ps.Servico = s.Num_servico
-            LEFT JOIN Pagamento p ON s.Num_servico = p.Servico
-            WHERE ps.Estado = 'Concluido' AND s.Profissional = @ProfissionalID";
-
-                // Filtra dependendo da escolha
-                if (filtro == "Pagos")
+                using (SqlCommand cmd = new SqlCommand("sp_ObterPedidosConcluidosProf", DatabaseHelper.GetConnection()))
                 {
-                    sql += " AND p.ID_transacao IS NOT NULL";
-                }
-                else if (filtro == "Não pagos")
-                {
-                    sql += " AND p.ID_transacao IS NULL";
-                }
-                // se for "Todos" não adiciona filtro extra
-
-                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
-                {
-                    // Add the parameter here
+                    cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@ProfissionalID", profissionalID);
+                    cmd.Parameters.AddWithValue("@Filtro", filtro);
+
                     using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
                     {
                         DataTable dt = new DataTable();
                         adapter.Fill(dt);
                         dataGridView4.DataSource = dt;
 
-                        // Opcional: ajustar colunas para exibir bem
                         dataGridView4.Columns["StatusPagamento"].HeaderText = "Status do Pagamento";
                     }
                 }
@@ -423,8 +380,7 @@ namespace homefix
                     return;
                 }
 
-                int nipc;
-                if (!int.TryParse(textBox5.Text.Trim(), out nipc))
+                if (!int.TryParse(textBox5.Text.Trim(), out int nipc))
                 {
                     MessageBox.Show("NIPC inválido.");
                     return;
@@ -440,15 +396,12 @@ namespace homefix
                     return;
                 }
 
-
-                string sql = @"INSERT INTO Empresa (NIPC, Nome_empresa, Endereço, Telefone) 
-                       VALUES (@NIPC, @Nome, @Endereco, @Telefone)";
-
-                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                using (SqlCommand cmd = new SqlCommand("sp_InserirEmpresa", DatabaseHelper.GetConnection()))
                 {
+                    cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@NIPC", nipc);
-                    cmd.Parameters.AddWithValue("@Nome", nome);
-                    cmd.Parameters.AddWithValue("@Endereco", (object)endereco ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Nome_empresa", nome);
+                    cmd.Parameters.AddWithValue("@Endereco", string.IsNullOrEmpty(endereco) ? DBNull.Value : (object)endereco);
                     cmd.Parameters.AddWithValue("@Telefone", telefone);
 
                     cmd.ExecuteNonQuery();
@@ -457,7 +410,7 @@ namespace homefix
                 MessageBox.Show("Empresa registada com sucesso!");
                 CarregarEmpresas();
             }
-            catch (Exception ex)
+            catch (SqlException ex)
             {
                 MessageBox.Show("Erro ao registar empresa: " + ex.Message);
             }
@@ -481,20 +434,17 @@ namespace homefix
                     return;
                 }
 
-                string sql = @"UPDATE Profissional SET Empresa = @NIPC WHERE ID = @ProfissionalID";
-
-                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                using (SqlCommand cmd = new SqlCommand("sp_AssociarProfissionalEmpresa", DatabaseHelper.GetConnection()))
                 {
+                    cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@NIPC", nipc);
                     cmd.Parameters.AddWithValue("@ProfissionalID", profissionalID);
-                    int rows = cmd.ExecuteNonQuery();
-                    if (rows > 0)
-                        MessageBox.Show("Associado à empresa com sucesso!");
-                    else
-                        MessageBox.Show("Profissional não encontrado ou erro na associação.");
+
+                    cmd.ExecuteNonQuery();
+                    MessageBox.Show("Associado à empresa com sucesso!");
                 }
             }
-            catch (Exception ex)
+            catch (SqlException ex)
             {
                 MessageBox.Show("Erro ao associar empresa: " + ex.Message);
             }
@@ -510,19 +460,16 @@ namespace homefix
                     return;
                 }
 
-                string sql = @"UPDATE Profissional SET Empresa = NULL WHERE ID = @ProfissionalID";
-
-                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                using (SqlCommand cmd = new SqlCommand("sp_DesvincularProfissional", DatabaseHelper.GetConnection()))
                 {
+                    cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@ProfissionalID", profissionalID);
-                    int rows = cmd.ExecuteNonQuery();
-                    if (rows > 0)
-                        MessageBox.Show("Profissional agora é independente.");
-                    else
-                        MessageBox.Show("Erro ao atualizar status do profissional.");
+
+                    cmd.ExecuteNonQuery();
+                    MessageBox.Show("Profissional agora é independente.");
                 }
             }
-            catch (Exception ex)
+            catch (SqlException ex)
             {
                 MessageBox.Show("Erro ao atualizar profissional: " + ex.Message);
             }
@@ -550,32 +497,21 @@ namespace homefix
             }
 
             int servicoID = Convert.ToInt32(row.Cells["Num_servico"].Value);
-            string custoStr = row.Cells["Custo"].Value?.ToString();
-
-            if (string.IsNullOrWhiteSpace(custoStr))
-            {
-                MessageBox.Show("O custo ainda não foi definido. Não é possível concluir.");
-                return;
-            }
 
             try
             {
-                using (SqlCommand cmd = new SqlCommand(@"UPDATE PedidoServico 
-                                                 SET Estado = 'Concluido' 
-                                                 WHERE Servico = @ServicoID", DatabaseHelper.GetConnection()))
+                using (SqlCommand cmd = new SqlCommand("sp_ConcluirPedidoPorServico", DatabaseHelper.GetConnection()))
                 {
+                    cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.AddWithValue("@ServicoID", servicoID);
-                    int rows = cmd.ExecuteNonQuery();
 
-                    if (rows > 0)
-                        MessageBox.Show("Pedido concluído com sucesso!");
-                    else
-                        MessageBox.Show("Erro ao concluir pedido.");
+                    cmd.ExecuteNonQuery();
 
+                    MessageBox.Show("Pedido concluído com sucesso!");
                     CarregarPedidosPendentes();
                 }
             }
-            catch (Exception ex)
+            catch (SqlException ex)
             {
                 MessageBox.Show("Erro ao concluir: " + ex.Message);
             }
@@ -591,5 +527,18 @@ namespace homefix
             string filtroSelecionado = comboBox2.SelectedItem.ToString();
             CarregarPedidosConcluidos(filtroSelecionado);
         }
+        private void AtualizarLabelRating()
+        {
+            if (comboBox1.SelectedItem == null) return;
+
+            DataRowView selectedRow = comboBox1.SelectedItem as DataRowView;
+            if (selectedRow != null)
+            {
+                decimal rating = 0;
+                decimal.TryParse(selectedRow["rating_empregados"].ToString(), out rating);
+                label8.Text = $"Rating: {rating:F2}";
+            }
+        }
+
     }
 }
