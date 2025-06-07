@@ -23,7 +23,8 @@ namespace homefix
             emailUtilizador = email;
             clienteID = ObterClienteIDPorEmail(emailUtilizador);
             textBox3.Text = clienteID.ToString();
-            comboBox1.Items.AddRange(new string[] { "MBWay", "Dinheiro", "Cartão" });
+            CarregarTiposPagamento();
+            DataLoader.CarregarEspecializacoes(comboBox2);
 
             // Opcional: carregar dados iniciais em outras abas se desejar
         }
@@ -45,6 +46,37 @@ namespace homefix
             }
         }
 
+        private void CarregarTiposPagamento()
+        {
+            try
+            {
+                if (!DatabaseHelper.VerifyConnection())
+                {
+                    MessageBox.Show("Erro na conexão com a base de dados.");
+                    return;
+                }
+
+                string sql = "SELECT Tipo FROM Tipo_Pagamento ORDER BY Tipo";
+
+                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                {
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        comboBox1.Items.Clear(); // Limpa itens atuais
+
+                        while (reader.Read())
+                        {
+                            comboBox1.Items.Add(reader["Tipo"].ToString());
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro ao carregar tipos de pagamento: " + ex.Message);
+            }
+        }
+
         private void label2_Click(object sender, EventArgs e)
         {
 
@@ -54,10 +86,11 @@ namespace homefix
         {
             string localizacao = textBox1.Text.Trim();
             string descricao = textBox2.Text.Trim();
+            string nomeEspecializacao = comboBox2.SelectedItem?.ToString();
 
-            if (string.IsNullOrEmpty(localizacao) || string.IsNullOrEmpty(descricao))
+            if (string.IsNullOrEmpty(localizacao) || string.IsNullOrEmpty(descricao) || string.IsNullOrEmpty(nomeEspecializacao))
             {
-                MessageBox.Show("Por favor, preencha todos os campos.");
+                MessageBox.Show("Por favor, preencha todos os campos e selecione uma especialização.");
                 return;
             }
 
@@ -66,16 +99,16 @@ namespace homefix
                 string estado = "Pendente";
                 DateTime dataPedido = DateTime.Now;
 
-                string sql = @"INSERT INTO PedidoServico (Localizacao, Estado, data_pedido, Descricao, Cliente)
-                               VALUES (@localizacao, @estado, @dataPedido, @descricao, @clienteID)";
-
-                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                using (SqlCommand cmd = new SqlCommand("sp_InserirPedidoServico", DatabaseHelper.GetConnection()))
                 {
-                    cmd.Parameters.AddWithValue("@localizacao", localizacao);
-                    cmd.Parameters.AddWithValue("@estado", estado);
-                    cmd.Parameters.AddWithValue("@dataPedido", dataPedido);
-                    cmd.Parameters.AddWithValue("@descricao", descricao);
-                    cmd.Parameters.AddWithValue("@clienteID", clienteID);
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    cmd.Parameters.AddWithValue("@Localizacao", localizacao);
+                    cmd.Parameters.AddWithValue("@Estado", estado);
+                    cmd.Parameters.AddWithValue("@DataPedido", dataPedido);
+                    cmd.Parameters.AddWithValue("@Descricao", descricao);
+                    cmd.Parameters.AddWithValue("@Cliente", clienteID);
+                    cmd.Parameters.AddWithValue("@NomeEspecializacao", nomeEspecializacao);
 
                     int rows = cmd.ExecuteNonQuery();
 
@@ -123,12 +156,10 @@ namespace homefix
                     return;
                 }
 
-                string sql = @"SELECT ID_pedido, Localizacao, data_pedido, Descricao, Estado, Servico
-                               FROM PedidoServico
-                               WHERE Cliente = @clienteID AND Estado = @estado";
-
-                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+                using (SqlCommand cmd = new SqlCommand("sp_ObterPedidosPorEstado", DatabaseHelper.GetConnection()))
                 {
+                    cmd.CommandType = CommandType.StoredProcedure;
+
                     cmd.Parameters.AddWithValue("@clienteID", clienteID);
                     cmd.Parameters.AddWithValue("@estado", estado);
 
@@ -136,9 +167,19 @@ namespace homefix
                     {
                         DataTable dt = new DataTable();
                         adapter.Fill(dt);
-                        if (estado == "Pendente") { dataGridView1.DataSource = dt; }
-                        else if (estado == "Progresso") { dataGridView2.DataSource = dt; }
-                        else { dataGridView3.DataSource = dt; }
+
+                        if (estado == "Pendente")
+                        {
+                            dataGridView1.DataSource = dt;
+                        }
+                        else if (estado == "Progresso")
+                        {
+                            dataGridView2.DataSource = dt;
+                        }
+                        else
+                        {
+                            dataGridView3.DataSource = dt;
+                        }
                     }
                 }
             }
@@ -370,10 +411,10 @@ namespace homefix
             if (dataGridView3.SelectedRows.Count == 0) return;
 
             int servicoID = Convert.ToInt32(dataGridView3.SelectedRows[0].Cells["Servico"].Value);
-            string tipo = comboBox1.SelectedItem?.ToString();
+            string tipoNome = comboBox1.SelectedItem?.ToString();
             string sumario = textBox6.Text.Trim();
 
-            if (string.IsNullOrEmpty(tipo) || string.IsNullOrEmpty(sumario))
+            if (string.IsNullOrEmpty(tipoNome) || string.IsNullOrEmpty(sumario))
             {
                 MessageBox.Show("Preencha todos os campos do pagamento.");
                 return;
@@ -381,6 +422,25 @@ namespace homefix
 
             try
             {
+                // 1. Obter o ID do tipo de pagamento
+                int tipoID = -1;
+                string sqlTipo = "SELECT ID_Tipo FROM Tipo_Pagamento WHERE Tipo = @TipoNome";
+
+                using (SqlCommand cmdTipo = new SqlCommand(sqlTipo, DatabaseHelper.GetConnection()))
+                {
+                    cmdTipo.Parameters.AddWithValue("@TipoNome", tipoNome);
+                    object result = cmdTipo.ExecuteScalar();
+
+                    if (result == null)
+                    {
+                        MessageBox.Show("Tipo de pagamento inválido.");
+                        return;
+                    }
+
+                    tipoID = Convert.ToInt32(result);
+                }
+
+                // 2. Inserir o pagamento com o tipoID correto
                 string sql = @"INSERT INTO Pagamento (Servico, Cliente, Sumario, Tipo)
                        VALUES (@ServicoID, @ClienteID, @Sumario, @Tipo)";
 
@@ -389,7 +449,7 @@ namespace homefix
                     cmd.Parameters.AddWithValue("@ServicoID", servicoID);
                     cmd.Parameters.AddWithValue("@ClienteID", clienteID);
                     cmd.Parameters.AddWithValue("@Sumario", sumario);
-                    cmd.Parameters.AddWithValue("@Tipo", tipo);
+                    cmd.Parameters.AddWithValue("@Tipo", tipoID);
 
                     int rows = cmd.ExecuteNonQuery();
 
@@ -522,6 +582,11 @@ namespace homefix
         }
 
         private void pictureBox1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label14_Click(object sender, EventArgs e)
         {
 
         }

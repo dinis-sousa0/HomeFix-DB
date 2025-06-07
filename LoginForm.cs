@@ -43,54 +43,59 @@ namespace homefix
 
             try
             {
-                SqlConnection cn = DatabaseHelper.GetConnection();
-
-                // Verifica credenciais
-                string sql = "SELECT ID_Utilizador FROM Utilizador WHERE Email = @Email AND PassHash = @PassHash";
-                int utilizadorId = -1;
-
-                using (SqlCommand cmd = new SqlCommand(sql, cn))
+                using (SqlConnection cn = DatabaseHelper.GetConnection())
+                using (SqlCommand cmd = new SqlCommand("spLogin", cn))
                 {
-                    cmd.Parameters.AddWithValue("@Email", email);
-                    cmd.Parameters.AddWithValue("@PassHash", password); // Em produção, use hash
+                    cmd.CommandType = CommandType.StoredProcedure;
 
-                    object result = cmd.ExecuteScalar();
-                    if (result != null && int.TryParse(result.ToString(), out int id))
+                    cmd.Parameters.AddWithValue("@Email", email);
+                    cmd.Parameters.AddWithValue("@PassHash", password);
+
+                    // Parâmetros OUTPUT
+                    var paramID = new SqlParameter("@ID_Utilizador", SqlDbType.Int)
                     {
-                        utilizadorId = id;
-                    }
-                    else
+                        Direction = ParameterDirection.Output
+                    };
+                    cmd.Parameters.Add(paramID);
+
+                    var paramTipo = new SqlParameter("@Tipo", SqlDbType.NVarChar, 20)
+                    {
+                        Direction = ParameterDirection.Output
+                    };
+                    cmd.Parameters.Add(paramTipo);
+
+                    cmd.ExecuteNonQuery();
+
+                    if (paramID.Value == DBNull.Value)
                     {
                         label3.ForeColor = Color.Red;
                         label3.Text = "Email ou senha inválidos.";
                         return;
                     }
-                }
 
-                // Verifica se é profissional
-                string sqlProf = "SELECT COUNT(*) FROM Profissional WHERE ID = @ID";
-                bool isProfissional = false;
+                    int utilizadorId = (int)paramID.Value;
+                    string tipo = paramTipo.Value.ToString();
 
-                using (SqlCommand cmd = new SqlCommand(sqlProf, cn))
-                {
-                    cmd.Parameters.AddWithValue("@ID", utilizadorId);
-                    isProfissional = (int)cmd.ExecuteScalar() > 0;
-                }
+                    this.Hide();
 
-                // Abre o formulário correto
-                this.Hide();
-
-                if (isProfissional)
-                {
-                    ProfissionlForm profForm = new ProfissionlForm(email);
-                    profForm.ShowDialog();
-                    this.Show();  // Quando voltar, mostra o login de novo
-                }
-                else
-                {
-                    PedidoForm pedidoForm = new PedidoForm(email);
-                    pedidoForm.ShowDialog();
-                    this.Show();  // Quando voltar, mostra o login de novo
+                    if (tipo == "profissional")
+                    {
+                        ProfissionlForm profForm = new ProfissionlForm(email);
+                        profForm.ShowDialog();
+                        this.Show();
+                    }
+                    else if (tipo == "cliente")
+                    {
+                        PedidoForm pedidoForm = new PedidoForm(email);
+                        pedidoForm.ShowDialog();
+                        this.Show();
+                    }
+                    else
+                    {
+                        label3.ForeColor = Color.Red;
+                        label3.Text = "Tipo de utilizador desconhecido.";
+                        this.Show();
+                    }
                 }
             }
             catch (Exception ex)
@@ -112,6 +117,16 @@ namespace homefix
         }
 
         private void label2_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void textBox2_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label4_Click(object sender, EventArgs e)
         {
 
         }

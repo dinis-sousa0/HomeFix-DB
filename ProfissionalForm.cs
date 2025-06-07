@@ -115,6 +115,25 @@ namespace homefix
             }
         }
 
+
+        private string ObterEspecializacaoProfissional(int profissionalID)
+        {
+            if (!DatabaseHelper.VerifyConnection())
+                throw new Exception("Erro na conexão com a base de dados.");
+
+            string sql = "SELECT Espec FROM Profissional WHERE ID = @ProfissionalID";
+
+            using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
+            {
+                cmd.Parameters.AddWithValue("@ProfissionalID", profissionalID);
+                object result = cmd.ExecuteScalar();
+                if (result != null)
+                    return result.ToString();
+                else
+                    throw new Exception("Especialização do profissional não encontrada.");
+            }
+        }
+
         private void CarregarPedidosPendentes(string filtroLocalizacao = "")
         {
             try
@@ -125,21 +144,18 @@ namespace homefix
                     return;
                 }
 
-                string sql = @"SELECT ID_pedido, Localizacao, data_pedido, Descricao, Estado
-                       FROM PedidoServico
-                       WHERE Estado = 'Pendente'";
+                string especializacao = ObterEspecializacaoProfissional(profissionalID);
 
-                if (!string.IsNullOrWhiteSpace(filtroLocalizacao))
+                using (SqlCommand cmd = new SqlCommand("sp_ObterPedidosPendentes", DatabaseHelper.GetConnection()))
                 {
-                    sql += " AND Localizacao LIKE @filtro";
-                }
+                    cmd.CommandType = CommandType.StoredProcedure;
 
-                using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
-                {
-                    if (!string.IsNullOrWhiteSpace(filtroLocalizacao))
-                    {
-                        cmd.Parameters.AddWithValue("@filtro", "%" + filtroLocalizacao + "%");
-                    }
+                    cmd.Parameters.AddWithValue("@Especializacao", especializacao);
+
+                    if (string.IsNullOrWhiteSpace(filtroLocalizacao))
+                        cmd.Parameters.AddWithValue("@FiltroLocalizacao", DBNull.Value);
+                    else
+                        cmd.Parameters.AddWithValue("@FiltroLocalizacao", filtroLocalizacao);
 
                     using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
                     {
@@ -153,7 +169,6 @@ namespace homefix
             {
                 MessageBox.Show("Erro ao carregar pedidos: " + ex.Message);
             }
-
         }
 
         private void tabPage2_Click(object sender, EventArgs e)
@@ -364,7 +379,7 @@ namespace homefix
             FROM PedidoServico ps
             JOIN Servico s ON ps.Servico = s.Num_servico
             LEFT JOIN Pagamento p ON s.Num_servico = p.Servico
-            WHERE ps.Estado = 'Concluido'";
+            WHERE ps.Estado = 'Concluido' AND s.Profissional = @ProfissionalID";
 
                 // Filtra dependendo da escolha
                 if (filtro == "Pagos")
@@ -379,6 +394,8 @@ namespace homefix
 
                 using (SqlCommand cmd = new SqlCommand(sql, DatabaseHelper.GetConnection()))
                 {
+                    // Add the parameter here
+                    cmd.Parameters.AddWithValue("@ProfissionalID", profissionalID);
                     using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
                     {
                         DataTable dt = new DataTable();
